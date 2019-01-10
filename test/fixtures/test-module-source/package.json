@@ -1,0 +1,11 @@
+{
+    "name": "test-module",
+    "version": "0.0.0",
+    "description": "Test module",
+    "main": "index.js",
+    "author": "Stephen S",
+    "license": "ISC",
+    "devDependencies": {
+        "module-c": "file:../module-c-0.0.0.tgz"
+    }
+}

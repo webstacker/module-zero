@@ -1,0 +1,1 @@
+const someExistingVar = 1;
