@@ -123,9 +123,8 @@ function createModuleZero(spec) {
             npmCommands.push(`npm install --save-dev ${packages}`);
 
             await exec(`${npmCommands.join(' && ')}`, {
-                stdio: [0, 1, 2],
                 cwd: parentModuleDir
-            });
+            }).stdout.pipe(process.stdout);
         } catch (err) {
             throw Error(error(err));
         }
