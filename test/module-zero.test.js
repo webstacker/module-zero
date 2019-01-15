@@ -21,7 +21,7 @@ describe('module-zero', () => {
     const baseModuleInstalledCwd = path.join(testModuleDirPath, 'node_modules/base');
     const testModulePackageJSONPath = path.join(testModuleDirPath, 'package.json');
     const baseModuleFile2Path = path.join(baseModuleInstalledCwd, 'files/subfolder/file2.txt');
-    // const baseModuleBlock1Path = path.join(baseModuleInstalledCwd, 'blocks/.gitignore');
+    const baseModuleBlock1Path = path.join(baseModuleInstalledCwd, 'blocks/.gitignore');
     const baseModuleBlock2Path = path.join(baseModuleInstalledCwd, 'blocks/subfolder/block2.js');
     const baseModuleBlock3Path = path.join(
         baseModuleInstalledCwd,
@@ -36,7 +36,7 @@ describe('module-zero', () => {
     const testModuleFile2Path = path.join(testModuleDirPath, '/subfolder/file2.txt');
     const testModuleFile3Path = path.join(testModuleDirPath, '/subfolder/subfolder/file3.txt');
     const testModuleFile4Path = path.join(testModuleDirPath, 'file4.txt');
-    // const testModuleBlock1Path = path.join(testModuleDirPath, '/.gitignore');
+    const testModuleBlock1Path = path.join(testModuleDirPath, '/.gitignore');
     const testModuleBlock2Path = path.join(testModuleDirPath, '/subfolder/block2.js');
     const testModuleBlock3Path = path.join(testModuleDirPath, '/block-with-existing-content.js');
     const testModuleBlock4Path = path.join(
@@ -205,8 +205,20 @@ describe('module-zero', () => {
 
                 await m0.createBlocks();
 
+                const block1Source = fs.readFileSync(baseModuleBlock1Path);
+                let newlineChar = detectNewline(block1Source.toString());
+                const expectedBlock1ContentBlocks = [
+                    `#! m0-start${newlineChar}node_modules${newlineChar}${newlineChar}folder${newlineChar}#! m0-end${newlineChar}${newlineChar}`
+                ];
+                const block1ContentBlocks = fs
+                    .readFileSync(testModuleBlock1Path)
+                    .toString()
+                    .match(/#! m0-start[^\uFDD1]*?#! m0-end\s*/g);
+
+                expect(block1ContentBlocks).toEqual(expectedBlock1ContentBlocks);
+
                 const block2Source = fs.readFileSync(baseModuleBlock2Path);
-                const newlineChar = detectNewline(block2Source.toString());
+                newlineChar = detectNewline(block2Source.toString());
                 const expectedBlock2ContentBlocks = [
                     `/*! m0-start */${newlineChar}function testFn(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
                     `/*! m0-start */${newlineChar}module.export = testFn;${newlineChar}/*! m0-end */`
