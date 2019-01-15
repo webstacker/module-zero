@@ -46,7 +46,8 @@ function createModuleZero(spec) {
 
         // http://unicode-table.com/en/search/?q=not+a+character
         blocks.commentRegexp[fileExt] = new RegExp(
-            `${openingComment}[^\\uFDD1]*${closingComment}\\s*`
+            `${openingComment}[^\\uFDD1]*?${closingComment}\\s*`,
+            'g'
         );
     });
 
@@ -155,11 +156,34 @@ function createModuleZero(spec) {
         const blockWithNewLineTokensReplaced = block.replace(/{newLine}/g, newLineChar);
         const rxStartOfFile = /^/;
         const hasBlock = rxBlock.test(fileContent);
-        const rxFind = hasBlock ? rxBlock : rxStartOfFile;
-        const fileContentWithReplacement = fileContent.replace(
-            rxFind,
-            blockWithNewLineTokensReplaced
-        );
+        let fileContentWithReplacement;
+
+        // if it has block(s) replace each one
+        if (hasBlock) {
+            const sourceBlocks = blockWithNewLineTokensReplaced.match(rxBlock);
+
+            if (sourceBlocks) {
+                let i = 0;
+
+                fileContentWithReplacement = fileContent.replace(rxBlock, () => {
+                    const replacement = sourceBlocks[i];
+
+                    i += 1;
+
+                    return replacement;
+                });
+            } else {
+                fileContentWithReplacement = fileContent.replace(
+                    rxBlock,
+                    blockWithNewLineTokensReplaced
+                );
+            }
+        } else {
+            fileContentWithReplacement = fileContent.replace(
+                rxStartOfFile,
+                blockWithNewLineTokensReplaced
+            );
+        }
 
         await fs.writeFile(filePath, fileContentWithReplacement, {
             encoding: 'utf8',
@@ -182,12 +206,7 @@ function createModuleZero(spec) {
         await Promise.all(promises);
     }
 
-    async function createBlocks(
-        srcGlob = blocks.src,
-        dest = parentModuleDir,
-        commentStyles = blocks.commentStyles,
-        commentStyleMap = blocks.commentStyleMap
-    ) {
+    async function createBlocks(srcGlob = blocks.src, dest = parentModuleDir) {
         try {
             const blockDirPath = path.join(cwd, 'blocks');
             const blockFilePaths = await globby(srcGlob, {
@@ -209,20 +228,7 @@ function createModuleZero(spec) {
                 const blockAbsoluteFilePath = path.join(blockDirPath, blockFilePath);
                 const blockContent = await fs.readFile(blockAbsoluteFilePath, 'utf8');
                 const extName = path.extname(blockFilePath) || path.basename(blockFilePath);
-                const commentStyle = commentStyles[commentStyleMap[extName]];
-                const openingComment = commentStyle.replace('m0', 'm0-start');
-                const closingComment = commentStyle.replace('m0', 'm0-end');
-                const warningMessage = commentStyle.replace(
-                    'm0',
-                    'THIS BLOCK WAS PROGRAMMATICALLY GENERATED. DO NOT MODIFY OR DELETE'
-                );
-                const comment = [
-                    openingComment,
-                    warningMessage,
-                    blockContent,
-                    closingComment,
-                    '{newLine}'
-                ].join('{newLine}');
+                const comment = [blockContent, '{newLine}'].join('');
 
                 // replace existing content
                 const destAbsoluteFilePath = path.join(dest, blockFilePath);

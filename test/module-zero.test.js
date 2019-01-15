@@ -21,20 +21,28 @@ describe('module-zero', () => {
     const baseModuleInstalledCwd = path.join(testModuleDirPath, 'node_modules/base');
     const testModulePackageJSONPath = path.join(testModuleDirPath, 'package.json');
     const baseModuleFile2Path = path.join(baseModuleInstalledCwd, 'files/subfolder/file2.txt');
-    const baseModuleBlock1Path = path.join(baseModuleInstalledCwd, 'blocks/.gitignore');
+    // const baseModuleBlock1Path = path.join(baseModuleInstalledCwd, 'blocks/.gitignore');
     const baseModuleBlock2Path = path.join(baseModuleInstalledCwd, 'blocks/subfolder/block2.js');
     const baseModuleBlock3Path = path.join(
         baseModuleInstalledCwd,
         'blocks/block-with-existing-content.js'
+    );
+    const baseModuleBlock4Path = path.join(
+        baseModuleInstalledCwd,
+        'blocks/file-with-existing-content-blocks.js'
     );
 
     const testModuleFile1Path = path.join(testModuleDirPath, '/file1.txt');
     const testModuleFile2Path = path.join(testModuleDirPath, '/subfolder/file2.txt');
     const testModuleFile3Path = path.join(testModuleDirPath, '/subfolder/subfolder/file3.txt');
     const testModuleFile4Path = path.join(testModuleDirPath, 'file4.txt');
-    const testModuleBlock1Path = path.join(testModuleDirPath, '/.gitignore');
+    // const testModuleBlock1Path = path.join(testModuleDirPath, '/.gitignore');
     const testModuleBlock2Path = path.join(testModuleDirPath, '/subfolder/block2.js');
     const testModuleBlock3Path = path.join(testModuleDirPath, '/block-with-existing-content.js');
+    const testModuleBlock4Path = path.join(
+        testModuleDirPath,
+        '/file-with-existing-content-blocks.js'
+    );
 
     beforeEach(() => {
         fs.copySync(path.join(fixtures, 'test-module-source'), path.join(fixtures, 'test-module'));
@@ -197,24 +205,18 @@ describe('module-zero', () => {
 
                 await m0.createBlocks();
 
-                const block1Source = fs.readFileSync(baseModuleBlock1Path);
-                let newlineChar = detectNewline(block1Source.toString());
-                const expectedBlock1Content = `#! m0-start${newlineChar}#! THIS BLOCK WAS PROGRAMMATICALLY GENERATED. DO NOT MODIFY OR DELETE${newlineChar}${block1Source}${newlineChar}#! m0-end`;
-                const block1Result = fs
-                    .readFileSync(testModuleBlock1Path)
-                    .toString()
-                    .trim();
-
                 const block2Source = fs.readFileSync(baseModuleBlock2Path);
-                newlineChar = detectNewline(block2Source.toString());
-                const expectedBlock2Content = `/*! m0-start */${newlineChar}/*! THIS BLOCK WAS PROGRAMMATICALLY GENERATED. DO NOT MODIFY OR DELETE */${newlineChar}${block2Source}${newlineChar}/*! m0-end */`;
-                const block2Result = fs
+                const newlineChar = detectNewline(block2Source.toString());
+                const expectedBlock2ContentBlocks = [
+                    `/*! m0-start */${newlineChar}function testFn(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
+                    `/*! m0-start */${newlineChar}module.export = testFn;${newlineChar}/*! m0-end */`
+                ];
+                const block2ContentBlocks = fs
                     .readFileSync(testModuleBlock2Path)
                     .toString()
-                    .trim();
+                    .match(/\/\*! m0-start \*\/[^\uFDD1]*?\/\*! m0-end \*\//g);
 
-                expect(block1Result).toEqual(expectedBlock1Content);
-                expect(block2Result).toEqual(expectedBlock2Content);
+                expect(block2ContentBlocks).toEqual(expectedBlock2ContentBlocks);
             });
 
             it('should record the files with blocks, in the parent module package.json', async () => {
@@ -239,38 +241,93 @@ describe('module-zero', () => {
                 const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
 
                 expect(parentPackageJSON._m0.blocks.sort() /* eslint-disable-line */).toEqual(
-                    ['.gitignore', 'block-with-existing-content.js', 'subfolder/block2.js'].sort()
+                    [
+                        '.gitignore',
+                        'block-with-existing-content.js',
+                        'file-with-existing-content-blocks.js',
+                        'subfolder/block2.js'
+                    ].sort()
                 );
             });
 
-            it('should keep existing content intact', async () => {
-                const m0 = createModuleZero({
-                    cwd: baseModuleInstalledCwd,
-                    blocks: {
-                        src: '**/*',
-                        commentStyles: {
-                            '#': '#! m0',
-                            '//': '//! m0',
-                            '/**/': '/*! m0 */'
-                        },
-                        commentStyleMap: {
-                            '.gitignore': '#',
-                            '.js': '/**/'
-                        }
-                    }
+            describe('Given the block destination file already exists and contains content', () => {
+                describe('and the content contains no blocks', () => {
+                    it('should insert blocks at the beginning of the file, keeping existing content intact', async () => {
+                        const m0 = createModuleZero({
+                            cwd: baseModuleInstalledCwd,
+                            blocks: {
+                                src: '**/*',
+                                commentStyles: {
+                                    '#': '#! m0',
+                                    '//': '//! m0',
+                                    '/**/': '/*! m0 */'
+                                },
+                                commentStyleMap: {
+                                    '.gitignore': '#',
+                                    '.js': '/**/'
+                                }
+                            }
+                        });
+
+                        await m0.createBlocks();
+
+                        const blockSource = fs.readFileSync(baseModuleBlock3Path);
+                        const newlineChar = detectNewline(blockSource.toString());
+                        const expectedBlockContent = [
+                            `/*! m0-start */${newlineChar}function testFn(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}`,
+                            `module.export = testFn;${newlineChar}/*! m0-end */`,
+                            'const someExistingVar = 1;'
+                        ].join(newlineChar + newlineChar);
+                        const blockResult = fs
+                            .readFileSync(testModuleBlock3Path)
+                            .toString()
+                            .trim();
+
+                        expect(blockResult).toEqual(expectedBlockContent);
+                    });
                 });
 
-                await m0.createBlocks();
+                describe('and the content contains blocks', () => {
+                    it('should replace the existing blocks, keeping existing content intact', async () => {
+                        const m0 = createModuleZero({
+                            cwd: baseModuleInstalledCwd,
+                            blocks: {
+                                src: '**/*',
+                                commentStyles: {
+                                    '#': '#! m0',
+                                    '//': '//! m0',
+                                    '/**/': '/*! m0 */'
+                                },
+                                commentStyleMap: {
+                                    '.gitignore': '#',
+                                    '.js': '/**/'
+                                }
+                            }
+                        });
 
-                const blockSource = fs.readFileSync(baseModuleBlock3Path);
-                const newlineChar = detectNewline(blockSource.toString());
-                const expectedBlockContent = `/*! m0-start */${newlineChar}/*! THIS BLOCK WAS PROGRAMMATICALLY GENERATED. DO NOT MODIFY OR DELETE */${newlineChar}${blockSource}${newlineChar}/*! m0-end */${newlineChar}${newlineChar}const someExistingVar = 1;`;
-                const blockResult = fs
-                    .readFileSync(testModuleBlock3Path)
-                    .toString()
-                    .trim();
+                        await m0.createBlocks();
 
-                expect(blockResult).toEqual(expectedBlockContent);
+                        const blockSource = fs.readFileSync(baseModuleBlock4Path);
+                        const newlineChar = detectNewline(blockSource.toString());
+                        const expectedBlockContent = [
+                            `/*! m0-start */${newlineChar}function testFnA(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
+                            `/*! m0-start */${newlineChar}function testFnB(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
+                            `/*! m0-start */${newlineChar}function testFnC(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
+                            `/*! m0-start */${newlineChar}function testFnD(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
+                            `/*! m0-start */${newlineChar}const config = {${newlineChar}    testFnA,${newlineChar}    testFnB,${newlineChar}    testFnC,${newlineChar}    testFnD${newlineChar}};${newlineChar}/*! m0-end */`,
+                            'function testFn5() {}',
+                            'config.testFn5 = testFn5;',
+                            `/*! m0-start */${newlineChar}module.export = config;${newlineChar}/*! m0-end */`
+                        ].join(newlineChar + newlineChar);
+
+                        const blockContent = fs
+                            .readFileSync(testModuleBlock4Path)
+                            .toString()
+                            .trim();
+
+                        expect(blockContent).toEqual(expectedBlockContent);
+                    });
+                });
             });
 
             it('should remove blocks from files no longer managed by module-zero', async () => {
@@ -293,16 +350,20 @@ describe('module-zero', () => {
                 await m0.createBlocks();
 
                 // simulate removal of base module block-with-existing-content.js
-                fs.removeSync(baseModuleBlock3Path);
+                fs.removeSync(baseModuleBlock4Path);
 
                 await m0.createBlocks();
 
                 const blockResult = fs
-                    .readFileSync(testModuleBlock3Path)
+                    .readFileSync(testModuleBlock4Path)
                     .toString()
                     .trim();
+                const newlineChar = detectNewline(blockResult);
+                const expectedContent = ['function testFn5() {}', 'config.testFn5 = testFn5;'].join(
+                    newlineChar + newlineChar
+                );
 
-                expect(blockResult).toEqual('const someExistingVar = 1;');
+                expect(blockResult).toEqual(expectedContent);
             });
         });
     });
