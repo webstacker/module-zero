@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs-extra');
 const writePkg = require('write-pkg');
-const {exec} = require('child_process');
+const {spawn} = require('child_process');
 const globby = require('globby');
 const detectNewline = require('detect-newline');
 const os = require('os');
@@ -100,6 +100,24 @@ function createModuleZero(spec) {
             .join(' ');
     }
 
+    function execCmd(cmd, workingDir = parentModuleDir) {
+        const childProcess = spawn(cmd, [], {
+            cwd: workingDir,
+            shell: true,
+            stdio: 'inherit'
+        });
+
+        return new Promise((resolve, reject) => {
+            childProcess.on('close', code => {
+                resolve(code);
+            });
+
+            childProcess.on('error', err => {
+                reject(err);
+            });
+        });
+    }
+
     async function installDevDependencies(
         devDependenciesLocal = devDependencies,
         dest = parentModuleDir
@@ -122,9 +140,7 @@ function createModuleZero(spec) {
             await writePkg(dest, parentPackageJSON, {normalize: false});
             npmCommands.push(`npm install --save-dev ${packages}`);
 
-            await exec(`${npmCommands.join(' && ')}`, {
-                cwd: parentModuleDir
-            }).stdout.pipe(process.stdout);
+            await execCmd(`${npmCommands.join(' && ')}`);
         } catch (err) {
             throw Error(error(err));
         }

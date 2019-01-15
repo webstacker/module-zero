@@ -1,12 +1,13 @@
 module.exports = {
-    extends: ['airbnb-base', 'prettier'],
+    extends: ['airbnb-base', 'prettier', 'plugin:jest/recommended'],
     env: {
-        jest: true,
         node: true
     },
     rules: {
         'prettier/prettier': ['error'],
-        'linebreak-style': ['error', process.platform === 'win32' ? 'windows' : 'unix']
+        'linebreak-style': ['error', process.platform === 'win32' ? 'windows' : 'unix'],
+        'curly': ['error', 'all'],
+        'jest/expect-expect': ['error']
     },
     plugins: ['prettier']
 };

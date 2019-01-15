@@ -1,13 +1,21 @@
 const fs = require('fs-extra');
 const path = require('path');
-const {exec} = require('child_process');
+const {spawn} = require('child_process');
 const detectNewline = require('detect-newline');
 const createModuleZero = require('../index');
 
-jest.mock('child_process', () => ({exec: jest.fn()}));
+jest.mock('child_process', () => ({
+    spawn: jest.fn().mockReturnValue({
+        on: (ev, fn) => {
+            // simulate success
+            if (ev === 'close') {
+                fn();
+            }
+        }
+    })
+}));
 
 describe('module-zero', () => {
-    jest.setTimeout = 120000;
     const fixtures = path.resolve(__dirname, 'fixtures');
     const testModuleDirPath = path.resolve(__dirname, 'fixtures/test-module');
     const baseModuleInstalledCwd = path.join(testModuleDirPath, 'node_modules/base');
@@ -34,11 +42,11 @@ describe('module-zero', () => {
 
     afterEach(() => {
         fs.removeSync(path.join(fixtures, 'test-module'));
-        exec.mockReset();
+        spawn.mockClear();
     });
 
     it('should throw if no parent module is found', () => {
-        expect(() => createModuleZero({})).toThrowError('module-zero: has no parent module');
+        expect(() => createModuleZero({})).toThrow('module-zero: has no parent module');
     });
 
     describe('npm installed module-zero', () => {
@@ -113,7 +121,7 @@ describe('module-zero', () => {
 
                 await m0.installDevDependencies();
 
-                expect(exec.mock.calls[0][0]).toEqual(
+                expect(spawn.mock.calls[0][0]).toEqual(
                     'npm install --save-dev a@0.0.0 b@0.0.1 c@0.1.1'
                 );
             });
@@ -161,7 +169,7 @@ describe('module-zero', () => {
 
                 const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
 
-                expect(exec.mock.calls[1][0]).toEqual(
+                expect(spawn.mock.calls[1][0]).toEqual(
                     'npm uninstall --save-dev b && npm install --save-dev a@0.0.0 c@0.1.1'
                 );
                 expect(parentPackageJSON._m0.devDependencies /* eslint-disable-line */).toEqual({
