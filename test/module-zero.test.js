@@ -21,7 +21,7 @@ describe('module-zero', () => {
     const baseModuleInstalledCwd = path.join(testModuleDirPath, 'node_modules/base');
     const testModulePackageJSONPath = path.join(testModuleDirPath, 'package.json');
     const baseModuleFile2Path = path.join(baseModuleInstalledCwd, 'files/subfolder/file2.txt');
-    const baseModuleBlock1Path = path.join(baseModuleInstalledCwd, 'blocks/.gitignore');
+    const baseModuleBlockGitIgnorePath = path.join(baseModuleInstalledCwd, 'blocks/_m0_.gitignore');
     const baseModuleBlock2Path = path.join(baseModuleInstalledCwd, 'blocks/subfolder/block2.js');
     const baseModuleBlock3Path = path.join(
         baseModuleInstalledCwd,
@@ -36,7 +36,7 @@ describe('module-zero', () => {
     const testModuleFile2Path = path.join(testModuleDirPath, '/subfolder/file2.txt');
     const testModuleFile3Path = path.join(testModuleDirPath, '/subfolder/subfolder/file3.txt');
     const testModuleFile4Path = path.join(testModuleDirPath, 'file4.txt');
-    const testModuleBlock1Path = path.join(testModuleDirPath, '/.gitignore');
+    const testModuleBlockGitIgnorePath = path.join(testModuleDirPath, '/.gitignore');
     const testModuleBlock2Path = path.join(testModuleDirPath, '/subfolder/block2.js');
     const testModuleBlock3Path = path.join(testModuleDirPath, '/block-with-existing-content.js');
     const testModuleBlock4Path = path.join(
@@ -205,13 +205,13 @@ describe('module-zero', () => {
 
                 await m0.createBlocks();
 
-                const block1Source = fs.readFileSync(baseModuleBlock1Path);
+                const block1Source = fs.readFileSync(baseModuleBlockGitIgnorePath);
                 let newlineChar = detectNewline(block1Source.toString());
                 const expectedBlock1ContentBlocks = [
                     `#! m0-start${newlineChar}node_modules${newlineChar}${newlineChar}folder${newlineChar}#! m0-end${newlineChar}${newlineChar}`
                 ];
                 const block1ContentBlocks = fs
-                    .readFileSync(testModuleBlock1Path)
+                    .readFileSync(testModuleBlockGitIgnorePath)
                     .toString()
                     .match(/#! m0-start[^\uFDD1]*?#! m0-end\s*/g);
 
@@ -364,6 +364,9 @@ describe('module-zero', () => {
                 // simulate removal of base module block-with-existing-content.js
                 fs.removeSync(baseModuleBlock4Path);
 
+                // simulate removal of base module block-with-existing-content.js
+                fs.removeSync(baseModuleBlockGitIgnorePath);
+
                 await m0.createBlocks();
 
                 const blockResult = fs
@@ -374,8 +377,13 @@ describe('module-zero', () => {
                 const expectedContent = ['function testFn5() {}', 'config.testFn5 = testFn5;'].join(
                     newlineChar + newlineChar
                 );
-
                 expect(blockResult).toEqual(expectedContent);
+
+                const blockResultGitIgnore = fs
+                    .readFileSync(testModuleBlockGitIgnorePath)
+                    .toString()
+                    .trim();
+                expect(blockResultGitIgnore).toEqual('stuff');
             });
         });
     });

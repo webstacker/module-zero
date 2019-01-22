@@ -1,0 +1,11 @@
+{
+    "name": "base-config",
+    "version": "0.0.0",
+    "description": "Base config",
+    "main": "index.js",
+    "author": "Stephen S",
+    "license": "ISC",
+    "scripts": {
+        "postinstall": "node index.js && echo 1"
+    }
+}

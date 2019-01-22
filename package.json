@@ -5,6 +5,8 @@
     "main": "index.js",
     "scripts": {
         "test": "jest",
+        "int": "jest --config=jest.config.int.js",
+        "testall": "npm test && npm run int",
         "coverage": "jest --coverage"
     },
     "author": "Stephen S",

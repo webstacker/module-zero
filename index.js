@@ -209,29 +209,32 @@ function createModuleZero(spec) {
     async function createBlocks(srcGlob = blocks.src, dest = parentModuleDir) {
         try {
             const blockDirPath = path.join(cwd, 'blocks');
-            const blockFilePaths = await globby(srcGlob, {
+            const blockSrcFilePaths = await globby(srcGlob, {
                 dot: true,
                 cwd: blockDirPath
             });
+            const blockDestFilePaths = blockSrcFilePaths.map(blockSrcFilePath =>
+                blockSrcFilePath.replace('_m0_', '')
+            );
 
             // remove previously created blocks that no longer exist
             const existingBlocks = parentPackageJSON._m0.blocks; // eslint-disable-line
 
             if (existingBlocks) {
-                await removeBlocks(existingBlocks, blockFilePaths, dest);
+                await removeBlocks(existingBlocks, blockDestFilePaths, dest);
             }
 
-            parentPackageJSON._m0.blocks = blockFilePaths; // eslint-disable-line
+            parentPackageJSON._m0.blocks = blockDestFilePaths; // eslint-disable-line
             await writePkg(dest, parentPackageJSON, {normalize: false});
 
-            const promises = blockFilePaths.map(async blockFilePath => {
+            const promises = blockSrcFilePaths.map(async (blockFilePath, index) => {
                 const blockAbsoluteFilePath = path.join(blockDirPath, blockFilePath);
                 const blockContent = await fs.readFile(blockAbsoluteFilePath, 'utf8');
                 const extName = path.extname(blockFilePath) || path.basename(blockFilePath);
                 const comment = [blockContent, '{newLine}'].join('');
 
                 // replace existing content
-                const destAbsoluteFilePath = path.join(dest, blockFilePath);
+                const destAbsoluteFilePath = path.join(dest, blockDestFilePaths[index]);
 
                 const rxBlock = blocks.commentRegexp[extName];
 
