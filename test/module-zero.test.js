@@ -136,6 +136,74 @@ describe('module-zero', () => {
                 );
             });
 
+            it("should install specified devDependencies if they don't already exist", async () => {
+                const m0 = createModuleZero({
+                    cwd: baseModuleInstalledCwd, // fixtures/test-module/node_modules/base
+                    files: '**/*',
+                    devDependencies: {
+                        a: '0.0.0',
+                        b: '0.0.1',
+                        c: '0.1.1'
+                    }
+                });
+
+                await m0.installDevDependencies();
+
+                // simulate another install:
+                // b bumped to 0.0.2
+                // 2 new dependencies d & e
+                await m0.installDevDependencies({
+                    a: '0.0.0',
+                    b: '0.0.2',
+                    c: '0.1.1',
+                    d: '1.1.1',
+                    e: '10.1.3'
+                });
+
+                const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
+
+                expect(spawn.mock.calls[1][0]).toEqual(
+                    'npm install --save-dev b@0.0.2 d@1.1.1 e@10.1.3'
+                );
+                expect(parentPackageJSON._m0.devDependencies /* eslint-disable-line */).toEqual({
+                    a: '0.0.0',
+                    b: '0.0.2',
+                    c: '0.1.1',
+                    d: '1.1.1',
+                    e: '10.1.3'
+                });
+            });
+
+            it('should do nothing if all specified devDependencies already exist', async () => {
+                const m0 = createModuleZero({
+                    cwd: baseModuleInstalledCwd, // fixtures/test-module/node_modules/base
+                    files: '**/*',
+                    devDependencies: {
+                        a: '0.0.0',
+                        b: '0.0.1',
+                        c: '0.1.1'
+                    }
+                });
+
+                await m0.installDevDependencies();
+
+                // simulate another install with all the same dependencies
+                await m0.installDevDependencies({
+                    a: '0.0.0',
+                    b: '0.0.1',
+                    c: '0.1.1'
+                });
+
+                const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
+
+                expect(spawn.mock.calls.length).toEqual(1);
+                expect(parentPackageJSON._m0.devDependencies /* eslint-disable-line */).toEqual({
+                    a: '0.0.0',
+                    b: '0.0.1',
+                    c: '0.1.1'
+                });
+            });
+
             it('should record the devDependencies in the parent module package.json', async () => {
                 const m0 = createModuleZero({
                     cwd: baseModuleInstalledCwd,
@@ -179,9 +247,7 @@ describe('module-zero', () => {
 
                 const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
 
-                expect(spawn.mock.calls[1][0]).toEqual(
-                    'npm uninstall --save-dev b && npm install --save-dev a@0.0.0 c@0.1.1'
-                );
+                expect(spawn.mock.calls[1][0]).toEqual('npm uninstall --save-dev b');
                 expect(parentPackageJSON._m0.devDependencies /* eslint-disable-line */).toEqual({
                     a: '0.0.0',
                     c: '0.1.1'
@@ -324,6 +390,7 @@ describe('module-zero', () => {
                         const blockSource = fs.readFileSync(baseModuleBlock4Path);
                         const newlineChar = detectNewline(blockSource.toString());
                         const expectedBlockContent = [
+                            "'use strict';",
                             `/*! m0-start */${newlineChar}function testFnA(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
                             `/*! m0-start */${newlineChar}function testFnB(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
                             `/*! m0-start */${newlineChar}function testFnC(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
@@ -376,9 +443,11 @@ describe('module-zero', () => {
                     .toString()
                     .trim();
                 const newlineChar = detectNewline(blockResult);
-                const expectedContent = ['function testFn5() {}', 'config.testFn5 = testFn5;'].join(
-                    newlineChar + newlineChar
-                );
+                const expectedContent = [
+                    "'use strict';",
+                    'function testFn5() {}',
+                    'config.testFn5 = testFn5;'
+                ].join(newlineChar + newlineChar);
                 expect(blockResult).toEqual(expectedContent);
 
                 const blockResultGitIgnore = fs
