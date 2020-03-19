@@ -48,7 +48,7 @@ function createModuleZero(spec) {
 
         // http://unicode-table.com/en/search/?q=not+a+character
         blocks.commentRegexp[fileExt] = new RegExp(
-            `${openingComment}[^\\uFDD1]*?${closingComment}\\s*`,
+            `${openingComment}[^\\uFDD1]*?${closingComment}`,
             'g'
         );
     });

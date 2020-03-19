@@ -45,17 +45,13 @@ describe('module-zero', () => {
         testModuleDirPath,
         '/file-with-existing-content-blocks.js'
     );
-    const testModuleBlock5Path = path.join(
-        testModuleDirPath,
-        '/file-with-existing-content-blocks-2.js'
-    );
 
     beforeEach(() => {
         fs.copySync(path.join(fixtures, 'test-module-source'), path.join(fixtures, 'test-module'));
     });
 
     afterEach(() => {
-        // fs.removeSync(path.join(fixtures, 'test-module'));
+        fs.removeSync(path.join(fixtures, 'test-module'));
         spawn.mockClear();
     });
 
@@ -412,46 +408,6 @@ describe('module-zero', () => {
 
                         expect(blockContent).toEqual(expectedBlockContent);
                     });
-
-                    it.only('should not add more lines', async () => {
-                        const m0 = createModuleZero({
-                            cwd: baseModuleInstalledCwd,
-                            blocks: {
-                                src: '**/*',
-                                commentStyles: {
-                                    '#': '#! m0',
-                                    '//': '//! m0',
-                                    '/**/': '/*! m0 */'
-                                },
-                                commentStyleMap: {
-                                    '.gitignore': '#',
-                                    '.js': '/**/'
-                                }
-                            }
-                        });
-
-                        await m0.createBlocks();
-
-                        // const blockSource = fs.readFileSync(baseModuleBlock4Path);
-                        // const newlineChar = detectNewline(blockSource.toString());
-                        // const expectedBlockContent = [
-                        //     "'use strict';",
-                        //     `/*! m0-start */${newlineChar}function testFnA(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
-                        //     `/*! m0-start */${newlineChar}function testFnB(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
-                        //     `/*! m0-start */${newlineChar}function testFnC(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
-                        //     `/*! m0-start */${newlineChar}function testFnD(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
-                        //     `/*! m0-start */${newlineChar}const config = {${newlineChar}    testFnA,${newlineChar}    testFnB,${newlineChar}    testFnC,${newlineChar}    testFnD${newlineChar}};${newlineChar}/*! m0-end */`,
-                        //     'function testFn5() {}',
-                        //     'config.testFn5 = testFn5;',
-                        //     `/*! m0-start */${newlineChar}module.export = config;${newlineChar}/*! m0-end */`
-                        // ].join(newlineChar + newlineChar);
-
-                        const blockContent = fs.readFileSync(testModuleBlock5Path).toString();
-
-                        console.log(`++++++>>>${blockContent}<<<++++++`);
-
-                        expect(blockContent).toEqual(expectedBlockContent);
-                    });
                 });
             });
 
@@ -474,31 +430,37 @@ describe('module-zero', () => {
 
                 await m0.createBlocks();
 
-                // simulate removal of base module block-with-existing-content.js
+                // // simulate removal of base module block-with-existing-content.js
                 fs.removeSync(baseModuleBlock4Path);
-
-                // simulate removal of base module block-with-existing-content.js
-                fs.removeSync(baseModuleBlockGitIgnorePath);
 
                 await m0.createBlocks();
 
-                const blockResult = fs
-                    .readFileSync(testModuleBlock4Path)
-                    .toString()
-                    .trim();
+                const blockResult = fs.readFileSync(testModuleBlock4Path).toString();
                 const newlineChar = detectNewline(blockResult);
                 const expectedContent = [
                     "'use strict';",
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
                     'function testFn5() {}',
-                    'config.testFn5 = testFn5;'
-                ].join(newlineChar + newlineChar);
-                expect(blockResult).toEqual(expectedContent);
+                    newlineChar,
+                    newlineChar,
+                    'config.testFn5 = testFn5;',
+                    newlineChar,
+                    newlineChar,
+                    newlineChar
+                ].join('');
 
-                const blockResultGitIgnore = fs
-                    .readFileSync(testModuleBlockGitIgnorePath)
-                    .toString()
-                    .trim();
-                expect(blockResultGitIgnore).toEqual('stuff');
+                expect(blockResult).toEqual(expectedContent);
             });
         });
     });
