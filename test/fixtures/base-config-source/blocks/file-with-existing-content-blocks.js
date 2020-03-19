@@ -1,3 +1,5 @@
+'use strict';
+
 /*! m0-start */
 function testFnA(a, b, c) {
     return [a, b, c];

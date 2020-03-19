@@ -1,3 +1,5 @@
+'use strict';
+
 const fs = require('fs-extra');
 const path = require('path');
 const {spawn} = require('child_process');
@@ -134,6 +136,74 @@ describe('module-zero', () => {
                 );
             });
 
+            it("should install specified devDependencies if they don't already exist", async () => {
+                const m0 = createModuleZero({
+                    cwd: baseModuleInstalledCwd, // fixtures/test-module/node_modules/base
+                    files: '**/*',
+                    devDependencies: {
+                        a: '0.0.0',
+                        b: '0.0.1',
+                        c: '0.1.1'
+                    }
+                });
+
+                await m0.installDevDependencies();
+
+                // simulate another install:
+                // b bumped to 0.0.2
+                // 2 new dependencies d & e
+                await m0.installDevDependencies({
+                    a: '0.0.0',
+                    b: '0.0.2',
+                    c: '0.1.1',
+                    d: '1.1.1',
+                    e: '10.1.3'
+                });
+
+                const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
+
+                expect(spawn.mock.calls[1][0]).toEqual(
+                    'npm install --save-dev b@0.0.2 d@1.1.1 e@10.1.3'
+                );
+                expect(parentPackageJSON._m0.devDependencies /* eslint-disable-line */).toEqual({
+                    a: '0.0.0',
+                    b: '0.0.2',
+                    c: '0.1.1',
+                    d: '1.1.1',
+                    e: '10.1.3'
+                });
+            });
+
+            it('should do nothing if all specified devDependencies already exist', async () => {
+                const m0 = createModuleZero({
+                    cwd: baseModuleInstalledCwd, // fixtures/test-module/node_modules/base
+                    files: '**/*',
+                    devDependencies: {
+                        a: '0.0.0',
+                        b: '0.0.1',
+                        c: '0.1.1'
+                    }
+                });
+
+                await m0.installDevDependencies();
+
+                // simulate another install with all the same dependencies
+                await m0.installDevDependencies({
+                    a: '0.0.0',
+                    b: '0.0.1',
+                    c: '0.1.1'
+                });
+
+                const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
+
+                expect(spawn.mock.calls.length).toEqual(1);
+                expect(parentPackageJSON._m0.devDependencies /* eslint-disable-line */).toEqual({
+                    a: '0.0.0',
+                    b: '0.0.1',
+                    c: '0.1.1'
+                });
+            });
+
             it('should record the devDependencies in the parent module package.json', async () => {
                 const m0 = createModuleZero({
                     cwd: baseModuleInstalledCwd,
@@ -177,9 +247,7 @@ describe('module-zero', () => {
 
                 const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
 
-                expect(spawn.mock.calls[1][0]).toEqual(
-                    'npm uninstall --save-dev b && npm install --save-dev a@0.0.0 c@0.1.1'
-                );
+                expect(spawn.mock.calls[1][0]).toEqual('npm uninstall --save-dev b');
                 expect(parentPackageJSON._m0.devDependencies /* eslint-disable-line */).toEqual({
                     a: '0.0.0',
                     c: '0.1.1'
@@ -322,6 +390,7 @@ describe('module-zero', () => {
                         const blockSource = fs.readFileSync(baseModuleBlock4Path);
                         const newlineChar = detectNewline(blockSource.toString());
                         const expectedBlockContent = [
+                            "'use strict';",
                             `/*! m0-start */${newlineChar}function testFnA(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
                             `/*! m0-start */${newlineChar}function testFnB(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
                             `/*! m0-start */${newlineChar}function testFnC(a, b, c) {${newlineChar}    return [a, b, c];${newlineChar}}${newlineChar}/*! m0-end */`,
@@ -361,29 +430,37 @@ describe('module-zero', () => {
 
                 await m0.createBlocks();
 
-                // simulate removal of base module block-with-existing-content.js
+                // // simulate removal of base module block-with-existing-content.js
                 fs.removeSync(baseModuleBlock4Path);
-
-                // simulate removal of base module block-with-existing-content.js
-                fs.removeSync(baseModuleBlockGitIgnorePath);
 
                 await m0.createBlocks();
 
-                const blockResult = fs
-                    .readFileSync(testModuleBlock4Path)
-                    .toString()
-                    .trim();
+                const blockResult = fs.readFileSync(testModuleBlock4Path).toString();
                 const newlineChar = detectNewline(blockResult);
-                const expectedContent = ['function testFn5() {}', 'config.testFn5 = testFn5;'].join(
-                    newlineChar + newlineChar
-                );
-                expect(blockResult).toEqual(expectedContent);
+                const expectedContent = [
+                    "'use strict';",
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    newlineChar,
+                    'function testFn5() {}',
+                    newlineChar,
+                    newlineChar,
+                    'config.testFn5 = testFn5;',
+                    newlineChar,
+                    newlineChar,
+                    newlineChar
+                ].join('');
 
-                const blockResultGitIgnore = fs
-                    .readFileSync(testModuleBlockGitIgnorePath)
-                    .toString()
-                    .trim();
-                expect(blockResultGitIgnore).toEqual('stuff');
+                expect(blockResult).toEqual(expectedContent);
             });
         });
     });

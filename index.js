@@ -1,3 +1,5 @@
+'use strict';
+
 const path = require('path');
 const fs = require('fs-extra');
 const writePkg = require('write-pkg');
@@ -46,7 +48,7 @@ function createModuleZero(spec) {
 
         // http://unicode-table.com/en/search/?q=not+a+character
         blocks.commentRegexp[fileExt] = new RegExp(
-            `${openingComment}[^\\uFDD1]*?${closingComment}\\s*`,
+            `${openingComment}[^\\uFDD1]*?${closingComment}`,
             'g'
         );
     });
@@ -91,16 +93,6 @@ function createModuleZero(spec) {
         }
     }
 
-    function devDependenciesToNPMString(devDependenciesLocal) {
-        return Object.keys(devDependenciesLocal)
-            .reduce((acc, dependency) => {
-                acc.push(`${dependency}@${devDependenciesLocal[dependency]}`);
-
-                return acc;
-            }, [])
-            .join(' ');
-    }
-
     function execCmd(cmd, workingDir = parentModuleDir) {
         const childProcess = spawn(cmd, [], {
             cwd: workingDir,
@@ -125,23 +117,38 @@ function createModuleZero(spec) {
     ) {
         try {
             const npmCommands = [];
-            const existingDevDependencies = parentPackageJSON._m0.devDependencies; // eslint-disable-line
+            const existingDevDependencies = parentPackageJSON._m0.devDependencies || {}; // eslint-disable-line
+            const packagesToRemove = Object.keys(existingDevDependencies).filter(
+                dependency => !Object.keys(devDependenciesLocal).includes(dependency)
+            );
+            const packagesToAdd = Object.keys(devDependenciesLocal).reduce(
+                (acc, dependencyName) => {
+                    const currentPackageVersion = existingDevDependencies[dependencyName];
+                    const newPackageVersion = devDependenciesLocal[dependencyName];
 
-            if (existingDevDependencies) {
-                const packagesToRemove = Object.keys(existingDevDependencies)
-                    .filter(dependency => !Object.keys(devDependenciesLocal).includes(dependency))
-                    .join(' ');
+                    if (currentPackageVersion !== newPackageVersion) {
+                        acc.push(`${dependencyName}@${newPackageVersion}`);
+                    }
 
-                npmCommands.push(`npm uninstall --save-dev ${packagesToRemove}`);
+                    return acc;
+                },
+                []
+            );
+
+            if (packagesToRemove.length > 0) {
+                npmCommands.push(`npm uninstall --save-dev ${packagesToRemove.join(' ')}`);
             }
 
-            const packages = devDependenciesToNPMString(devDependenciesLocal);
+            if (packagesToAdd.length > 0) {
+                npmCommands.push(`npm install --save-dev ${packagesToAdd.join(' ')}`);
+            }
 
             parentPackageJSON._m0.devDependencies = devDependenciesLocal; // eslint-disable-line
             await writePkg(dest, parentPackageJSON, {normalize: false});
-            npmCommands.push(`npm install --save-dev ${packages}`);
 
-            await execCmd(`${npmCommands.join(' && ')}`);
+            if (npmCommands.length !== 0) {
+                await execCmd(`${npmCommands.join(' && ')}`);
+            }
         } catch (err) {
             throw Error(error(err));
         }
