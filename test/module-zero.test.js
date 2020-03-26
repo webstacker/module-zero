@@ -320,14 +320,12 @@ describe('module-zero', () => {
 
                 const parentPackageJSON = fs.readJSONSync(testModulePackageJSONPath);
 
-                expect(parentPackageJSON._m0.blocks.sort() /* eslint-disable-line */).toEqual(
-                    [
-                        '.gitignore',
-                        'block-with-existing-content.js',
-                        'file-with-existing-content-blocks.js',
-                        'subfolder/block2.js'
-                    ].sort()
-                );
+                expect(parentPackageJSON._m0.blocks /* eslint-disable-line */).toEqual([
+                    '.gitignore',
+                    'block-with-existing-content.js',
+                    'file-with-existing-content-blocks.js',
+                    'subfolder/block2.js'
+                ]);
             });
 
             describe('Given the block destination file already exists and contains content', () => {

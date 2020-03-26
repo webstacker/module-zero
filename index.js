@@ -60,6 +60,10 @@ function createModuleZero(spec) {
                 dot: true,
                 cwd: filesDir
             });
+
+            // Ensure package.json output order is consistent regardless of resolved promise order
+            copiedFilesRelativePaths.sort();
+
             const copyFilePromises = copiedFilesRelativePaths.map(relPath => {
                 const source = path.join(filesDir, relPath);
                 const destination = path.join(dest, relPath);
@@ -220,6 +224,10 @@ function createModuleZero(spec) {
                 dot: true,
                 cwd: blockDirPath
             });
+
+            // Ensure package.json output order is consistent regardless of resolved promise order
+            blockSrcFilePaths.sort();
+
             const blockDestFilePaths = blockSrcFilePaths.map(blockSrcFilePath =>
                 blockSrcFilePath.replace('_m0_', '')
             );
