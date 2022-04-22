@@ -13,7 +13,7 @@ function createModuleZero(spec) {
         files = '**/*',
         blocks = {src: '**/*', commentStyles: {}, commentStyleMap: {}},
         devDependencies,
-        cwd = process.cwd()
+        cwd = path.join(process.env.INIT_CWD, 'node_modules', process.env.npm_package_name)
     } = spec;
 
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
@@ -25,16 +25,26 @@ function createModuleZero(spec) {
         return `module-zero: ${errorMessage}`;
     }
 
-    function getParentPackage(parentDir) {
+    function hasParentModule(expectedChildModulePath) {
+        // if the child exists, it must have a parent
+        return fs.existsSync(expectedChildModulePath);
+    }
+
+    function getParentModulePackageJson(parentModuleDir) {
         try {
-            return fs.readJsonSync(path.join(parentDir, 'package.json'));
+            return fs.readJsonSync(path.join(parentModuleDir, 'package.json'));
         } catch (err) {
-            throw Error(error('has no parent module'));
+            throw Error(error(err.message));
         }
     }
 
-    const parentModuleDir = path.resolve(cwd, '../..');
-    const parentPackageJSON = getParentPackage(parentModuleDir);
+    if (hasParentModule(cwd) === false) {
+        throw Error(error('has no parent module'));
+    }
+
+    const parentModuleDir = path.resolve(cwd, '../../');
+    const parentPackageJSON = getParentModulePackageJson(parentModuleDir);
+
     parentPackageJSON._m0 = parentPackageJSON._m0 || {}; // eslint-disable-line
 
     // Create regexs for each comment style
