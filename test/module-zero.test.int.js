@@ -25,7 +25,6 @@ function execCmd(cmd, workingDir) {
 
 describe('module-zero', () => {
     const fixtures = path.resolve(__dirname, 'fixtures');
-    const baseConfigModuleDirPath = path.resolve(__dirname, 'fixtures/base-config');
     const myModuleDirPath = path.resolve(__dirname, 'fixtures/my-module');
     const myModuleGitIgnoreFilePath = path.join(myModuleDirPath, '.gitignore');
 
@@ -33,10 +32,6 @@ describe('module-zero', () => {
         fs.copySync(path.join(fixtures, 'base-config-source'), path.join(fixtures, 'base-config'));
         fs.copySync(path.join(fixtures, 'my-module-source'), path.join(fixtures, 'my-module'));
         await execCmd('npm pack ../../', fixtures);
-        await execCmd(
-            `npm install ../module-zero-${moduleZeroVersion}.tgz`,
-            baseConfigModuleDirPath
-        );
         await execCmd('npm pack ./base-config/', fixtures);
         await execCmd('npm install ../base-config-0.0.0.tgz', myModuleDirPath);
     }, 5 * 60000);
