@@ -20,14 +20,14 @@
         "eslint-plugin-jest": "^23.8.2",
         "eslint-plugin-prettier": "^3.1.2",
         "husky": "^4.2.3",
-        "jest": "^24.9.0",
+        "jest": "^27.5.1",
         "lint-staged": "^10.0.8",
         "prettier": "^1.19.1"
     },
     "dependencies": {
         "detect-newline": "^3.1.0",
+        "fs-extra": "^8.1.0",
         "globby": "^11.0.0",
-        "write-pkg": "^4.0.0",
-        "fs-extra": "^8.1.0"
+        "write-pkg": "^4.0.0"
     }
 }
